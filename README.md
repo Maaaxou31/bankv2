@@ -50,30 +50,61 @@ Système bancaire complet pour FiveM avec gestion de comptes personnels et profe
 
 ## Installation
 
+### ⚠️ IMPORTANT : Conflit avec ox_banking
+
+Si vous avez **ox_banking** installé, vous devez le **désactiver** :
+
+```cfg
+# Dans server.cfg, commentez ou supprimez cette ligne :
+# ensure ox_banking
+```
+
+Vous ne pouvez pas avoir les deux scripts de banque en même temps !
+
 ### 1. Base de données
 
 Exécutez le fichier `bankv2.sql` dans votre base de données MySQL :
 
-```sql
--- Importez le fichier bankv2.sql
+```bash
+# Depuis phpMyAdmin : Importer le fichier bankv2.sql
+# OU depuis MySQL CLI :
+mysql -u root -p nom_de_votre_base < bankv2.sql
 ```
 
 ### 2. Ressource FiveM
 
 1. Placez le dossier `bankv2` dans votre répertoire `resources`
-2. Ajoutez la ligne suivante dans votre `server.cfg` :
+2. Ajoutez les lignes suivantes dans votre `server.cfg` **APRÈS ESX** :
 
 ```cfg
+ensure oxmysql
+ensure es_extended
 ensure bankv2
 ```
 
 ### 3. Dépendances
 
 Ce script nécessite :
-- **ESX Framework** (ESX Legacy recommandé)
+- **ESX Legacy** (obligatoire)
 - **oxmysql** (pour les requêtes MySQL)
 
-### 4. Configuration
+### 4. Premier démarrage
+
+1. Redémarrez complètement votre serveur
+2. Connectez-vous au jeu
+3. Votre compte sera créé automatiquement
+4. Utilisez `/bank` pour vérifier que tout fonctionne
+
+## 🔧 Dépannage
+
+Si vous rencontrez des problèmes, consultez le [Guide de Dépannage](TROUBLESHOOTING.md) qui couvre :
+- Conflit avec ox_banking
+- Compte non trouvé
+- Touche E qui ne fonctionne pas
+- Impossible d'écrire dans les champs
+- Et bien plus...
+
+## Configuration
 
 Éditez le fichier `config.lua` pour personnaliser :
 - Les limites de retrait/dépôt

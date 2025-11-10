@@ -204,56 +204,79 @@ end)
 
 -- Détecter les ATM proches
 Citizen.CreateThread(function()
+    local sleep = 500
+    local isNearATM = false
+
     while true do
-        Citizen.Wait(0)
+        Citizen.Wait(sleep)
 
         local playerPed = PlayerPedId()
         local playerCoords = GetEntityCoords(playerPed)
         local nearATM = false
 
-        -- Vérifier les ATM configurés
-        for _, atmCoords in pairs(Config.ATMLocations) do
-            local distance = #(playerCoords - atmCoords)
+        -- Vérifier les props ATM en priorité
+        for _, model in pairs(Config.ATMModels) do
+            local atm = GetClosestObjectOfType(playerCoords.x, playerCoords.y, playerCoords.z, 2.5, model, false, false, false)
 
-            if distance < 2.0 then
-                nearATM = true
-                currentATM = atmCoords
+            if atm ~= 0 then
+                local atmCoords = GetEntityCoords(atm)
+                local distance = #(playerCoords - atmCoords)
 
-                -- Afficher le texte d'aide
-                ESX.ShowHelpNotification('Appuyez sur ~INPUT_CONTEXT~ pour accéder au distributeur')
+                if distance < 2.5 then
+                    nearATM = true
+                    sleep = 0
 
-                -- Vérifier si le joueur appuie sur E
-                if IsControlJustReleased(0, 38) then
-                    OpenBank('personal') -- Les ATM ne donnent accès qu'au compte personnel
-                end
-            end
-        end
-
-        -- Vérifier les props ATM
-        if not nearATM then
-            for _, model in pairs(Config.ATMModels) do
-                local atm = GetClosestObjectOfType(playerCoords.x, playerCoords.y, playerCoords.z, 2.0, model, false, false, false)
-
-                if atm ~= 0 then
-                    local atmCoords = GetEntityCoords(atm)
-                    local distance = #(playerCoords - atmCoords)
-
-                    if distance < 2.0 then
-                        nearATM = true
-                        currentATM = atmCoords
-
-                        ESX.ShowHelpNotification('Appuyez sur ~INPUT_CONTEXT~ pour accéder au distributeur')
-
-                        if IsControlJustReleased(0, 38) then
-                            OpenBank('personal')
-                        end
+                    if not isNearATM then
+                        print('[BankV2] Joueur proche d\'un ATM')
+                        isNearATM = true
                     end
+
+                    -- Afficher le texte d'aide
+                    ESX.ShowHelpNotification('Appuyez sur ~INPUT_CONTEXT~ pour accéder au distributeur')
+
+                    -- Vérifier si le joueur appuie sur E
+                    if IsControlJustReleased(0, 38) and not bankOpen then
+                        print('[BankV2] Ouverture ATM...')
+                        OpenBank('personal')
+                    end
+
+                    break
+                end
+            end
+        end
+
+        -- Vérifier les ATM configurés si aucun prop trouvé
+        if not nearATM then
+            for _, atmCoords in pairs(Config.ATMLocations) do
+                local distance = #(playerCoords - atmCoords)
+
+                if distance < 2.5 then
+                    nearATM = true
+                    sleep = 0
+
+                    if not isNearATM then
+                        print('[BankV2] Joueur proche d\'un ATM (position fixe)')
+                        isNearATM = true
+                    end
+
+                    ESX.ShowHelpNotification('Appuyez sur ~INPUT_CONTEXT~ pour accéder au distributeur')
+
+                    if IsControlJustReleased(0, 38) and not bankOpen then
+                        print('[BankV2] Ouverture ATM...')
+                        OpenBank('personal')
+                    end
+
+                    break
                 end
             end
         end
 
         if not nearATM then
-            Citizen.Wait(500)
+            sleep = 500
+            if isNearATM then
+                isNearATM = false
+                print('[BankV2] Joueur éloigné de l\'ATM')
+            end
         end
     end
 end)

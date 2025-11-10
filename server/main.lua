@@ -66,53 +66,126 @@ AddEventHandler('bankv2:server:createPersonalAccount', function()
     local _source = source
     local xPlayer = ESX.GetPlayerFromId(_source)
 
-    if xPlayer then
-        local identifier = xPlayer.identifier
-
-        -- Vérifier si le compte existe déjà
-        MySQL.Async.fetchAll('SELECT * FROM bank_accounts_personal WHERE identifier = @identifier', {
-            ['@identifier'] = identifier
-        }, function(result)
-            if not result[1] then
-                local iban = GenerateIBAN()
-
-                MySQL.Async.execute('INSERT INTO bank_accounts_personal (identifier, firstname, lastname, iban, balance) VALUES (@identifier, @firstname, @lastname, @iban, @balance)', {
-                    ['@identifier'] = identifier,
-                    ['@firstname'] = xPlayer.get('firstName') or 'Prénom',
-                    ['@lastname'] = xPlayer.get('lastName') or 'Nom',
-                    ['@iban'] = iban,
-                    ['@balance'] = Config.DefaultPersonalBalance
-                }, function(rowsChanged)
-                    print('[BankV2] Compte personnel créé pour ' .. xPlayer.getName() .. ' - IBAN: ' .. iban)
-                end)
-            end
-        end)
+    if not xPlayer then
+        print('[BankV2] ERROR: xPlayer is nil for source ' .. _source)
+        return
     end
+
+    local identifier = xPlayer.identifier
+    print('[BankV2] Création de compte pour ' .. identifier)
+
+    -- Vérifier si le compte existe déjà
+    MySQL.Async.fetchAll('SELECT * FROM bank_accounts_personal WHERE identifier = @identifier', {
+        ['@identifier'] = identifier
+    }, function(result)
+        if not result[1] then
+            local iban = GenerateIBAN()
+
+            -- Récupérer le nom et prénom depuis les variables ESX
+            local firstname = xPlayer.get('firstName') or xPlayer.getName():gsub('_', ' '):match("(%S+)") or 'Prénom'
+            local lastname = xPlayer.get('lastName') or xPlayer.getName():gsub('_', ' '):match("%S+ (%S+)") or 'Nom'
+
+            print('[BankV2] Insertion du compte pour ' .. firstname .. ' ' .. lastname)
+
+            MySQL.Async.execute('INSERT INTO bank_accounts_personal (identifier, firstname, lastname, iban, balance) VALUES (@identifier, @firstname, @lastname, @iban, @balance)', {
+                ['@identifier'] = identifier,
+                ['@firstname'] = firstname,
+                ['@lastname'] = lastname,
+                ['@iban'] = iban,
+                ['@balance'] = Config.DefaultPersonalBalance
+            }, function(rowsChanged)
+                if rowsChanged > 0 then
+                    print('[BankV2] ✓ Compte personnel créé pour ' .. xPlayer.getName() .. ' - IBAN: ' .. iban)
+                    TriggerClientEvent('bankv2:client:notification', _source, 'success', 'Compte bancaire créé !')
+                else
+                    print('[BankV2] ✗ Erreur lors de la création du compte')
+                end
+            end)
+        else
+            print('[BankV2] Compte existe déjà pour ' .. identifier .. ' - IBAN: ' .. result[1].iban)
+        end
+    end)
 end)
 
 -- Récupérer les informations du compte
 ESX.RegisterServerCallback('bankv2:getAccountInfo', function(source, cb, accountType)
     local xPlayer = ESX.GetPlayerFromId(source)
 
+    if not xPlayer then
+        print('[BankV2] ERROR: xPlayer is nil in getAccountInfo')
+        cb(nil)
+        return
+    end
+
     if accountType == 'personal' then
         MySQL.Async.fetchAll('SELECT * FROM bank_accounts_personal WHERE identifier = @identifier', {
             ['@identifier'] = xPlayer.identifier
         }, function(result)
             if result[1] then
+                print('[BankV2] Compte trouvé pour ' .. xPlayer.identifier .. ' - Balance: ' .. result[1].balance)
                 cb(result[1])
             else
-                cb(nil)
+                print('[BankV2] ATTENTION: Compte non trouvé pour ' .. xPlayer.identifier .. ', création...')
+                -- Créer le compte s'il n'existe pas
+                local iban = GenerateIBAN()
+                local firstname = xPlayer.get('firstName') or xPlayer.getName():gsub('_', ' '):match("(%S+)") or 'Prénom'
+                local lastname = xPlayer.get('lastName') or xPlayer.getName():gsub('_', ' '):match("%S+ (%S+)") or 'Nom'
+
+                MySQL.Async.execute('INSERT INTO bank_accounts_personal (identifier, firstname, lastname, iban, balance) VALUES (@identifier, @firstname, @lastname, @iban, @balance)', {
+                    ['@identifier'] = xPlayer.identifier,
+                    ['@firstname'] = firstname,
+                    ['@lastname'] = lastname,
+                    ['@iban'] = iban,
+                    ['@balance'] = Config.DefaultPersonalBalance
+                }, function(rowsChanged)
+                    if rowsChanged > 0 then
+                        print('[BankV2] ✓ Compte créé automatiquement')
+                        -- Récupérer le compte nouvellement créé
+                        MySQL.Async.fetchAll('SELECT * FROM bank_accounts_personal WHERE identifier = @identifier', {
+                            ['@identifier'] = xPlayer.identifier
+                        }, function(newResult)
+                            cb(newResult[1])
+                        end)
+                    else
+                        print('[BankV2] ✗ Erreur création automatique')
+                        cb(nil)
+                    end
+                end)
             end
         end)
     elseif accountType == 'business' then
         local job = xPlayer.getJob()
+        local society = 'society_' .. job.name
+
         MySQL.Async.fetchAll('SELECT * FROM bank_accounts_business WHERE society = @society', {
-            ['@society'] = 'society_' .. job.name
+            ['@society'] = society
         }, function(result)
             if result[1] then
+                print('[BankV2] Compte entreprise trouvé: ' .. society)
                 cb(result[1])
             else
-                cb(nil)
+                print('[BankV2] Compte entreprise non trouvé: ' .. society .. ', création...')
+                -- Créer le compte entreprise s'il n'existe pas
+                local iban = GenerateIBAN()
+                local societyLabel = job.label or job.name
+
+                MySQL.Async.execute('INSERT INTO bank_accounts_business (society, society_label, iban, balance) VALUES (@society, @society_label, @iban, @balance)', {
+                    ['@society'] = society,
+                    ['@society_label'] = societyLabel,
+                    ['@iban'] = iban,
+                    ['@balance'] = Config.DefaultBusinessBalance
+                }, function(rowsChanged)
+                    if rowsChanged > 0 then
+                        print('[BankV2] ✓ Compte entreprise créé: ' .. society)
+                        MySQL.Async.fetchAll('SELECT * FROM bank_accounts_business WHERE society = @society', {
+                            ['@society'] = society
+                        }, function(newResult)
+                            cb(newResult[1])
+                        end)
+                    else
+                        cb(nil)
+                    end
+                end)
             end
         end)
     end
