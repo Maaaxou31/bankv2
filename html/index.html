@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BankV2</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container" id="bankApp" style="display: none;">
+        <div class="bank-container">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo">
+                    <i class="fas fa-university"></i>
+                    <span>BankV2</span>
+                </div>
+                <div class="account-switcher">
+                    <button class="account-btn active" data-account="personal">
+                        <i class="fas fa-user"></i> Compte Personnel
+                    </button>
+                    <button class="account-btn" data-account="business">
+                        <i class="fas fa-briefcase"></i> Compte Entreprise
+                    </button>
+                </div>
+                <button class="close-btn" id="closeBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="navigation">
+                <button class="nav-btn active" data-tab="home">
+                    <i class="fas fa-home"></i>
+                    <span>Accueil</span>
+                </button>
+                <button class="nav-btn" data-tab="cards">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Cartes Bancaires</span>
+                </button>
+                <button class="nav-btn" data-tab="transactions">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Transactions</span>
+                </button>
+                <button class="nav-btn" data-tab="account">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Votre Compte</span>
+                </button>
+                <button class="nav-btn salary-btn" data-tab="salary" style="display: none;">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Salaires</span>
+                </button>
+            </nav>
+
+            <!-- Content -->
+            <div class="content">
+                <!-- Home Tab -->
+                <div class="tab-content active" id="home-tab">
+                    <div class="balance-card">
+                        <div class="balance-header">
+                            <span>Solde disponible</span>
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="balance-amount" id="balance">0.00€</div>
+                        <div class="balance-iban">
+                            IBAN: <span id="iban">--</span>
+                        </div>
+                    </div>
+
+                    <div class="quick-actions">
+                        <div class="action-card" id="depositBtn">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>Déposer</span>
+                        </div>
+                        <div class="action-card" id="withdrawBtn">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>Retirer</span>
+                        </div>
+                        <div class="action-card" id="transferBtn">
+                            <i class="fas fa-exchange-alt"></i>
+                            <span>Virement</span>
+                        </div>
+                    </div>
+
+                    <div class="recent-transactions">
+                        <h3>Dernières transactions</h3>
+                        <div id="recentTransactionsList"></div>
+                    </div>
+                </div>
+
+                <!-- Cards Tab -->
+                <div class="tab-content" id="cards-tab">
+                    <div class="cards-header">
+                        <h2>Vos Cartes Bancaires</h2>
+                        <button class="btn btn-primary" id="createCardBtn">
+                            <i class="fas fa-plus"></i> Nouvelle Carte
+                        </button>
+                    </div>
+                    <div class="cards-list" id="cardsList"></div>
+                </div>
+
+                <!-- Transactions Tab -->
+                <div class="tab-content" id="transactions-tab">
+                    <h2>Historique des Transactions</h2>
+                    <div class="transactions-list" id="transactionsList"></div>
+                </div>
+
+                <!-- Account Tab -->
+                <div class="tab-content" id="account-tab">
+                    <h2>Informations du Compte</h2>
+                    <div class="account-info">
+                        <div class="info-row">
+                            <span class="info-label">Nom:</span>
+                            <span class="info-value" id="accountName">--</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">IBAN:</span>
+                            <span class="info-value" id="accountIban">--</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Type de compte:</span>
+                            <span class="info-value" id="accountType">Personnel</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Solde:</span>
+                            <span class="info-value" id="accountBalance">0.00€</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Date d'ouverture:</span>
+                            <span class="info-value" id="accountDate">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Salary Tab (Business only) -->
+                <div class="tab-content" id="salary-tab">
+                    <div class="salary-header">
+                        <h2>Gestion des Salaires</h2>
+                        <button class="btn btn-primary" id="payAllSalariesBtn">
+                            <i class="fas fa-money-bill-wave"></i> Payer Tous les Salaires
+                        </button>
+                    </div>
+                    <div class="employees-list" id="employeesList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for deposit -->
+    <div class="modal" id="depositModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Déposer de l'argent</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="number" id="depositAmount" placeholder="Montant" class="input">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Annuler</button>
+                <button class="btn btn-primary" id="confirmDeposit">Déposer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for withdraw -->
+    <div class="modal" id="withdrawModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Retirer de l'argent</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="number" id="withdrawAmount" placeholder="Montant" class="input">
+                <input type="password" id="withdrawPin" placeholder="Code PIN" maxlength="4" class="input">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Annuler</button>
+                <button class="btn btn-primary" id="confirmWithdraw">Retirer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for transfer -->
+    <div class="modal" id="transferModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Effectuer un virement</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="transferIban" placeholder="IBAN du destinataire" class="input">
+                <input type="number" id="transferAmount" placeholder="Montant" class="input">
+                <input type="text" id="transferDescription" placeholder="Description (optionnel)" class="input">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Annuler</button>
+                <button class="btn btn-primary" id="confirmTransfer">Envoyer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for create card -->
+    <div class="modal" id="createCardModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Créer une nouvelle carte</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-info">Coût: 150€</p>
+                <input type="password" id="newCardPin" placeholder="Code PIN (4 chiffres)" maxlength="4" class="input">
+                <input type="password" id="confirmCardPin" placeholder="Confirmer le code PIN" maxlength="4" class="input">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Annuler</button>
+                <button class="btn btn-primary" id="confirmCreateCard">Créer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notificationText">Notification</span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
