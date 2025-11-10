@@ -10,7 +10,7 @@ window.addEventListener('message', function(event) {
 
     switch(data.action) {
         case 'open':
-            openBank(data.accountType || 'personal');
+            openBank(data.accountType || 'personal', data.hasJob, data.isBoss);
             break;
         case 'close':
             closeBank();
@@ -33,8 +33,15 @@ window.addEventListener('message', function(event) {
 // Escape key to close
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-        closeBank();
-        closeAllModals();
+        // Vérifier si une modal est ouverte
+        const openModal = document.querySelector('.modal.active');
+        if (openModal) {
+            // Fermer seulement la modal
+            closeModal(openModal.id);
+        } else {
+            // Fermer la banque
+            closeBank();
+        }
     }
 });
 
@@ -91,9 +98,24 @@ function init() {
 }
 
 // Open bank
-function openBank(accountType = 'personal') {
+function openBank(accountType = 'personal', hasJob = true, isBoss = false) {
     currentAccount = accountType;
     document.getElementById('bankApp').style.display = 'flex';
+
+    // Masquer le bouton compte entreprise si pas de job
+    const businessBtn = document.querySelector('.account-btn[data-account="business"]');
+    if (businessBtn) {
+        if (hasJob) {
+            businessBtn.style.display = 'flex';
+        } else {
+            businessBtn.style.display = 'none';
+            // Si on essaie d'ouvrir le compte entreprise sans job, rediriger vers personnel
+            if (accountType === 'business') {
+                accountType = 'personal';
+                currentAccount = 'personal';
+            }
+        }
+    }
 
     // Update account switcher
     document.querySelectorAll('.account-btn').forEach(btn => {
@@ -105,7 +127,7 @@ function openBank(accountType = 'personal') {
 
     // Show/hide salary tab for business accounts
     const salaryBtn = document.querySelector('.salary-btn');
-    if (accountType === 'business') {
+    if (accountType === 'business' && isBoss) {
         salaryBtn.style.display = 'flex';
     } else {
         salaryBtn.style.display = 'none';
@@ -115,7 +137,7 @@ function openBank(accountType = 'personal') {
     loadCards();
     loadTransactions();
 
-    if (accountType === 'business') {
+    if (accountType === 'business' && isBoss) {
         loadEmployees();
     }
 
@@ -537,7 +559,6 @@ function confirmDeposit() {
     });
 
     closeModal('depositModal');
-    document.getElementById('depositAmount').value = '';
 }
 
 // Confirm withdraw
@@ -568,8 +589,6 @@ function confirmWithdraw() {
     });
 
     closeModal('withdrawModal');
-    document.getElementById('withdrawAmount').value = '';
-    document.getElementById('withdrawPin').value = '';
 }
 
 // Confirm transfer
@@ -602,9 +621,6 @@ function confirmTransfer() {
     });
 
     closeModal('transferModal');
-    document.getElementById('transferIban').value = '';
-    document.getElementById('transferAmount').value = '';
-    document.getElementById('transferDescription').value = '';
 }
 
 // Confirm create card
@@ -640,18 +656,32 @@ function confirmCreateCard() {
     });
 
     closeModal('createCardModal');
-    document.getElementById('newCardPin').value = '';
-    document.getElementById('confirmCardPin').value = '';
 }
 
 // Open modal
 function openModal(modalId) {
-    document.getElementById(modalId).classList.add('active');
+    const modal = document.getElementById(modalId);
+    modal.classList.add('active');
+
+    // Focus sur le premier input de la modal après un court délai
+    setTimeout(() => {
+        const firstInput = modal.querySelector('input');
+        if (firstInput) {
+            firstInput.focus();
+        }
+    }, 100);
 }
 
 // Close modal
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('active');
+    const modal = document.getElementById(modalId);
+    modal.classList.remove('active');
+
+    // Nettoyer les inputs
+    const inputs = modal.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.value = '';
+    });
 }
 
 // Close all modals

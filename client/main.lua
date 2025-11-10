@@ -1,4 +1,4 @@
-ESX = nil
+ESX = exports['es_extended']:getSharedObject()
 local PlayerData = {}
 local bankOpen = false
 local currentATM = nil
@@ -6,11 +6,6 @@ local cardProp = nil
 local hasCard = false
 
 Citizen.CreateThread(function()
-    while ESX == nil do
-        TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
-        Citizen.Wait(0)
-    end
-
     while ESX.GetPlayerData().job == nil do
         Citizen.Wait(10)
     end
@@ -35,17 +30,37 @@ RegisterCommand('bank', function()
 end)
 
 RegisterCommand('bankpro', function()
-    OpenBank('business')
+    -- Vérifier si le joueur a un job
+    if PlayerData.job and PlayerData.job.name ~= 'unemployed' then
+        OpenBank('business')
+    else
+        ESX.ShowNotification('~r~Vous n\'avez pas d\'entreprise')
+    end
 end)
 
 -- Ouvrir la banque
 function OpenBank(accountType)
     if not bankOpen then
+        -- Vérifier si le compte entreprise est autorisé
+        if accountType == 'business' then
+            if not PlayerData.job or PlayerData.job.name == 'unemployed' then
+                ESX.ShowNotification('~r~Vous n\'avez pas d\'entreprise')
+                return
+            end
+        end
+
         bankOpen = true
         SetNuiFocus(true, true)
+
+        -- Envoyer les infos au NUI
+        local hasJob = PlayerData.job and PlayerData.job.name ~= 'unemployed'
+        local isBoss = hasJob and PlayerData.job.grade_name == 'boss'
+
         SendNUIMessage({
             action = 'open',
-            accountType = accountType
+            accountType = accountType,
+            hasJob = hasJob,
+            isBoss = isBoss
         })
     end
 end
@@ -58,6 +73,24 @@ RegisterNUICallback('close', function(data, cb)
         action = 'close'
     })
     cb('ok')
+end)
+
+-- Désactiver les contrôles quand la banque est ouverte
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(0)
+
+        if bankOpen then
+            DisableControlAction(0, 1, true) -- LookLeftRight
+            DisableControlAction(0, 2, true) -- LookUpDown
+            DisableControlAction(0, 142, true) -- MeleeAttackAlternate
+            DisableControlAction(0, 106, true) -- VehicleMouseControlOverride
+            DisableControlAction(0, 24, true) -- Attack
+            DisableControlAction(0, 25, true) -- Aim
+        else
+            Citizen.Wait(500)
+        end
+    end
 end)
 
 -- NUI Callbacks
